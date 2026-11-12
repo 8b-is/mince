@@ -115,3 +115,13 @@ func TestHealthz(t *testing.T) {
 		t.Fatalf("status %d", resp.StatusCode)
 	}
 }
+
+func TestProtectTailZeroIsValid(t *testing.T) {
+	s := New(Config{ProtectTail: 0})
+	if s.cfg.ProtectTail != 0 {
+		t.Fatalf("ProtectTail 0 was overridden to %d", s.cfg.ProtectTail)
+	}
+	if got := New(Config{ProtectTail: -1}).cfg.ProtectTail; got != 2 {
+		t.Fatalf("ProtectTail sentinel -1 = %d, want 2", got)
+	}
+}

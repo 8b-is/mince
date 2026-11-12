@@ -65,7 +65,7 @@ func New(cfg Config) *Server {
 	if cfg.MinBytes <= 0 {
 		cfg.MinBytes = 1024
 	}
-	if cfg.ProtectTail <= 0 {
+	if cfg.ProtectTail < 0 {
 		cfg.ProtectTail = 2
 	}
 	if cfg.CompressTimeout <= 0 {

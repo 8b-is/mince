@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"mince/internal/ccr"
 	"mince/internal/mcp"
@@ -57,7 +58,7 @@ func usage() {
 	fmt.Fprint(os.Stderr, `mince — local reversible context compression
 
 usage:
-  mince proxy    [--addr 127.0.0.1:8787] [--min-bytes 1024] [--protect-tail 2] [--ccr-dir DIR]
+  mince proxy    [--addr 127.0.0.1:8787] [--min-bytes 1024] [--protect-tail 2] [--compress-timeout 20ms] [--ccr-dir DIR]
   mince wrap     [--port 0] [--ccr-dir DIR] <command> [args...]
   mince mcp      serve [--ccr-dir DIR]
   mince compress [--kind auto|json|log|code] [--min-bytes N] [--ccr-dir DIR] [file|-]
@@ -96,6 +97,7 @@ func runProxy(args []string) {
 	addr := fs.String("addr", "127.0.0.1:8787", "listen address")
 	minBytes := fs.Int("min-bytes", 1024, "minimum content bytes to consider")
 	protectTail := fs.Int("protect-tail", 2, "trailing turns never touched")
+	compressTimeout := fs.Duration("compress-timeout", 20*time.Millisecond, "per-request compression budget")
 	ccrDir := fs.String("ccr-dir", "", "CCR store directory")
 	anthropic := fs.String("anthropic-upstream", "https://api.anthropic.com", "Anthropic upstream")
 	openai := fs.String("openai-upstream", "https://api.openai.com", "OpenAI upstream")
@@ -108,6 +110,7 @@ func runProxy(args []string) {
 		OpenAIUpstream:    *openai,
 		MinBytes:          *minBytes,
 		ProtectTail:       *protectTail,
+		CompressTimeout:   *compressTimeout,
 		Store:             store,
 		Logger:            logger(),
 	})

@@ -28,10 +28,11 @@ func Run(agent string, args []string, port int, store *ccr.Store, logger *slog.L
 		return 2, fmt.Errorf("wrap: listen: %w", err)
 	}
 	cfg := proxy.Config{
-		Addr:     l.Addr().String(),
-		Store:    store,
-		Logger:   logger,
-		MinBytes: 1024,
+		Addr:        l.Addr().String(),
+		Store:       store,
+		Logger:      logger,
+		MinBytes:    1024,
+		ProtectTail: 2,
 	}
 	srv := proxy.New(cfg)
 	serveErr := make(chan error, 1)
