@@ -18,6 +18,7 @@ import (
 	"mince/internal/aligner"
 	"mince/internal/ccr"
 	"mince/internal/pq"
+	"mince/internal/wireagent"
 )
 
 // Config configures the proxy.
@@ -30,6 +31,7 @@ type Config struct {
 	Store             *ccr.Store
 	Logger            *slog.Logger
 	CompressTimeout   time.Duration
+	WireAgents        *wireagent.Pipeline
 }
 
 // Stats is the in-process savings ledger.
@@ -94,7 +96,7 @@ func (s *Server) Stats() *Stats { return s.stats }
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/_mince/healthz", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "version": "0.1.0"})
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "version": "0.2.0"})
 	})
 	mux.HandleFunc("/_mince/stats", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, s.stats.Snapshot(s.cfg.Store))
@@ -172,6 +174,18 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request, provider string)
 			status = "passthrough"
 		}
 		cancel()
+	}
+
+	if s.cfg.WireAgents != nil {
+		wc := &wireagent.Context{Body: aligned, Headers: r.Header.Clone()}
+		if werr := s.cfg.WireAgents.Run(wc); werr == nil && len(wc.Body) > 0 {
+			aligned = wc.Body
+			for k, vv := range wc.Headers {
+				for _, v := range vv {
+					r.Header.Set(k, v)
+				}
+			}
+		}
 	}
 
 	base := s.cfg.OpenAIUpstream

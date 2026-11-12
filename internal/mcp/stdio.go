@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"mince/internal/ccr"
+	"mince/internal/felix"
 	"mince/internal/mincer"
 	"mince/internal/pq"
 	"mince/internal/router"
@@ -87,7 +88,7 @@ func (s *Server) dispatch(req request) response {
 		resp.Result = map[string]any{
 			"protocolVersion": protocolVersion,
 			"capabilities":    map[string]any{"tools": map[string]any{}},
-			"serverInfo":      map[string]any{"name": "mince", "version": "0.1.0"},
+			"serverInfo":      map[string]any{"name": "mince", "version": "0.2.0"},
 		}
 	case "ping":
 		resp.Result = map[string]any{}
@@ -138,6 +139,15 @@ func toolDefs() []map[string]any {
 			"name":        "mince_stats",
 			"description": "Return session and store savings as exact p/q ratios.",
 			"inputSchema": map[string]any{"type": "object", "properties": map[string]any{}},
+		},
+		{
+			"name":        "felix_eval",
+			"description": "Compile and run a FELIX source with fn main() and return its value.",
+			"inputSchema": map[string]any{
+				"type":       "object",
+				"properties": map[string]any{"source": map[string]any{"type": "string"}},
+				"required":   []string{"source"},
+			},
 		},
 	}
 }
@@ -204,6 +214,25 @@ func (s *Server) callTool(params json.RawMessage) (any, error) {
 			return textResult(map[string]any{"error": err.Error()}, true), nil
 		}
 		return textResult(map[string]any{"id": "ccr_" + id, "content": text}, false), nil
+	case "felix_eval":
+		var args struct {
+			Source string `json:"source"`
+		}
+		if err := json.Unmarshal(p.Arguments, &args); err != nil {
+			return nil, fmt.Errorf("invalid arguments: %w", err)
+		}
+		if args.Source == "" {
+			return nil, fmt.Errorf("source is required")
+		}
+		prog, err := felix.Compile(args.Source)
+		if err != nil {
+			return textResult(map[string]any{"error": err.Error()}, true), nil
+		}
+		v, err := prog.Call("main", nil)
+		if err != nil {
+			return textResult(map[string]any{"error": err.Error()}, true), nil
+		}
+		return textResult(map[string]any{"value": v.String(prog)}, false), nil
 	case "mince_stats":
 		s.mu.Lock()
 		calls, raw, out := s.calls, s.raw, s.out

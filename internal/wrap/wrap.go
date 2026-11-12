@@ -15,6 +15,7 @@ import (
 
 	"mince/internal/ccr"
 	"mince/internal/proxy"
+	"mince/internal/wireagent"
 )
 
 // Run starts a proxy on 127.0.0.1:port, injects base URLs, and executes the
@@ -33,6 +34,7 @@ func Run(agent string, args []string, port int, store *ccr.Store, logger *slog.L
 		Logger:      logger,
 		MinBytes:    1024,
 		ProtectTail: 2,
+		WireAgents:  wireagent.NewPipeline(&wireagent.TierShuntAgent{}, &wireagent.InlineCCRAgent{Store: store}),
 	}
 	srv := proxy.New(cfg)
 	serveErr := make(chan error, 1)

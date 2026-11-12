@@ -58,7 +58,7 @@ func TestStdioCompressRetrieve(t *testing.T) {
 	if err := json.Unmarshal([]byte(lines[1]), &listResp); err != nil {
 		t.Fatal(err)
 	}
-	if len(listResp.Result.Tools) != 3 {
+	if len(listResp.Result.Tools) != 4 {
 		t.Fatalf("tools %d", len(listResp.Result.Tools))
 	}
 

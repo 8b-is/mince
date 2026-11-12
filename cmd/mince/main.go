@@ -16,14 +16,20 @@ import (
 	"time"
 
 	"mince/internal/ccr"
+	"mince/internal/felix"
+	"mince/internal/litany"
 	"mince/internal/mcp"
 	"mince/internal/mincer"
+	"mince/internal/pq"
 	"mince/internal/proxy"
+	"mince/internal/ralph"
 	"mince/internal/router"
+	"mince/internal/vakedhcl"
+	"mince/internal/wireagent"
 	"mince/internal/wrap"
 )
 
-const version = "0.1.0"
+const version = "0.2.0"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -43,6 +49,12 @@ func main() {
 		runRetrieve(os.Args[2:])
 	case "stats":
 		runStats(os.Args[2:])
+	case "felix":
+		runFelix(os.Args[2:])
+	case "ralph":
+		runRalph(os.Args[2:])
+	case "init":
+		runInit(os.Args[2:])
 	case "version", "--version", "-v":
 		fmt.Println("mince " + version)
 	case "help", "--help", "-h":
@@ -58,12 +70,15 @@ func usage() {
 	fmt.Fprint(os.Stderr, `mince — local reversible context compression
 
 usage:
-  mince proxy    [--addr 127.0.0.1:8787] [--min-bytes 1024] [--protect-tail 2] [--compress-timeout 20ms] [--ccr-dir DIR]
-  mince wrap     [--port 0] [--ccr-dir DIR] <command> [args...]
+  mince proxy    [--config mince.vkd.hcl] [--addr 127.0.0.1:8787] [--min-bytes 1024] [--protect-tail 2] [--compress-timeout 20ms] [--ccr-dir DIR]
+  mince wrap     [--config mince.vkd.hcl] [--port 0] [--ccr-dir DIR] <command> [args...]
   mince mcp      serve [--ccr-dir DIR]
   mince compress [--kind auto|json|log|code] [--min-bytes N] [--ccr-dir DIR] [file|-]
   mince retrieve [--grep PATTERN] [--offset N] [--limit N] [--ccr-dir DIR] <ccr_id>
   mince stats    [--addr http://127.0.0.1:8787]
+  mince felix eval '<source>'
+  mince ralph run [--plan] [--verify] [--max-iter 64] [--every 8]
+  mince init     [--path mince.vkd.hcl] [--force]
   mince version
 `)
 }
@@ -99,9 +114,11 @@ func runProxy(args []string) {
 	protectTail := fs.Int("protect-tail", 2, "trailing turns never touched")
 	compressTimeout := fs.Duration("compress-timeout", 20*time.Millisecond, "per-request compression budget")
 	ccrDir := fs.String("ccr-dir", "", "CCR store directory")
+	configPath := fs.String("config", "", "mince.vkd.hcl capability contract")
 	anthropic := fs.String("anthropic-upstream", "https://api.anthropic.com", "Anthropic upstream")
 	openai := fs.String("openai-upstream", "https://api.openai.com", "OpenAI upstream")
 	_ = fs.Parse(args)
+	loadConfig(*configPath)
 
 	store := openStore(*ccrDir)
 	srv := proxy.New(proxy.Config{
@@ -113,6 +130,7 @@ func runProxy(args []string) {
 		CompressTimeout:   *compressTimeout,
 		Store:             store,
 		Logger:            logger(),
+		WireAgents:        wireagent.NewPipeline(&wireagent.TierShuntAgent{}, &wireagent.InlineCCRAgent{Store: store}),
 	})
 	l, err := srv.Start()
 	if err != nil {
@@ -136,7 +154,9 @@ func runWrap(args []string) {
 	fs := flag.NewFlagSet("wrap", flag.ExitOnError)
 	port := fs.Int("port", 0, "proxy port (0 = ephemeral)")
 	ccrDir := fs.String("ccr-dir", "", "CCR store directory")
+	configPath := fs.String("config", "", "mince.vkd.hcl capability contract")
 	_ = fs.Parse(args)
+	loadConfig(*configPath)
 	rest := fs.Args()
 	if len(rest) == 0 {
 		fmt.Fprintln(os.Stderr, "mince wrap: no command given")
@@ -232,4 +252,93 @@ func runStats(args []string) {
 	}
 	defer resp.Body.Close()
 	_, _ = io.Copy(os.Stdout, resp.Body)
+}
+
+func loadConfig(path string) *vakedhcl.Config {
+	if path == "" {
+		return nil
+	}
+	cfg, err := vakedhcl.Load(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "mince: config %s: %v\n", path, err)
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stderr, "mince: config %s version=%s capabilities=%d wire_agents=%d ralph=%d\n",
+		path, cfg.Version, len(cfg.Capabilities), len(cfg.WireAgents), len(cfg.Ralph))
+	return cfg
+}
+
+func runInit(args []string) {
+	fs := flag.NewFlagSet("init", flag.ExitOnError)
+	path := fs.String("path", "mince.vkd.hcl", "config path")
+	force := fs.Bool("force", false, "overwrite an existing config")
+	_ = fs.Parse(args)
+	if _, err := os.Stat(*path); err == nil && !*force {
+		fmt.Fprintf(os.Stderr, "mince init: %s already exists (use --force)\n", *path)
+		os.Exit(1)
+	}
+	if err := os.WriteFile(*path, []byte(vakedhcl.SampleConfig), 0o644); err != nil {
+		fmt.Fprintf(os.Stderr, "mince init: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stderr, "mince: wrote %s\n", *path)
+}
+
+func runFelix(args []string) {
+	if len(args) == 0 || args[0] != "eval" || len(args) < 2 {
+		fmt.Fprintln(os.Stderr, "usage: mince felix eval '<source>'")
+		os.Exit(2)
+	}
+	p, err := felix.Compile(args[1])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "mince felix: %v\n", err)
+		os.Exit(1)
+	}
+	v, err := p.Call("main", nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "mince felix: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println(v.String(p))
+}
+
+func runRalph(args []string) {
+	if len(args) == 0 || args[0] != "run" {
+		fmt.Fprintln(os.Stderr, "usage: mince ralph run [--plan] [--verify] [--max-iter N] [--every N]")
+		os.Exit(2)
+	}
+	fs := flag.NewFlagSet("ralph run", flag.ExitOnError)
+	plan := fs.Bool("plan", false, "print the replay plan")
+	verify := fs.Bool("verify", false, "verify the final provenance chain")
+	maxIter := fs.Int("max-iter", 64, "iterations")
+	every := fs.Int("every", 8, "replay cadence")
+	_ = fs.Parse(args[1:])
+	eng := ralph.NewEngine(*every)
+	for i := 0; i < *maxIter; i++ {
+		a := eng.Current().Bandit.Select()
+		reward := pq.New(0, 1)
+		if i%2 == 0 {
+			reward = pq.New(1, 1)
+		}
+		if _, err := eng.Record(ralph.Turn{Action: a, Reward: reward}); err != nil {
+			fmt.Fprintf(os.Stderr, "mince ralph: %v\n", err)
+			os.Exit(1)
+		}
+	}
+	p := eng.Current()
+	if *plan {
+		fmt.Printf("ralph plan: max_iter=%d every=%d ring=%d policy=%s\n", *maxIter, *every, ralph.RingSize, p.Bandit.Best())
+	}
+	if *verify {
+		if p.Provenance == nil {
+			fmt.Fprintln(os.Stderr, "mince ralph: no provenance frame")
+			os.Exit(1)
+		}
+		if err := litany.VerifyChain([]*litany.Frame{p.Provenance}, [32]byte{}); err != nil {
+			fmt.Fprintf(os.Stderr, "mince ralph: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("ralph verify: ok")
+	}
+	fmt.Printf("ralph: version=%d score=%s best=%s\n", p.Version, p.Score.String(), p.Bandit.Best())
 }

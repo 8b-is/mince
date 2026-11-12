@@ -2,3 +2,5 @@ bin/
 .DS_Store
 *.test
 *.out
+
+tools/mlx-quant-kompress/target/

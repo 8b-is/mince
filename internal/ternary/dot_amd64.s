@@ -1,0 +1,39 @@
+#include "textflag.h"
+
+// func dotPlaneSliceASM(aPos, aNeg, bPos, bNeg []uint64) int64
+TEXT ·dotPlaneSliceASM(SB), NOSPLIT, $0-104
+	MOVQ aPos_base+0(FP), SI
+	MOVQ aNeg_base+24(FP), DI
+	MOVQ bPos_base+48(FP), R8
+	MOVQ bNeg_base+72(FP), R9
+	MOVQ aPos_len+8(FP), CX
+	XORQ AX, AX
+	XORQ DX, DX
+loop:
+	CMPQ DX, CX
+	JGE done
+	MOVQ (SI)(DX*8), R10
+	MOVQ (DI)(DX*8), R11
+	MOVQ (R8)(DX*8), R12
+	MOVQ (R9)(DX*8), R13
+	MOVQ R10, R14
+	ANDQ R12, R14
+	POPCNTQ R14, R14
+	ADDQ R14, AX
+	MOVQ R11, R14
+	ANDQ R13, R14
+	POPCNTQ R14, R14
+	ADDQ R14, AX
+	MOVQ R10, R14
+	ANDQ R13, R14
+	POPCNTQ R14, R14
+	SUBQ R14, AX
+	MOVQ R11, R14
+	ANDQ R12, R14
+	POPCNTQ R14, R14
+	SUBQ R14, AX
+	INCQ DX
+	JMP loop
+done:
+	MOVQ AX, ret+96(FP)
+	RET

@@ -42,3 +42,27 @@ func TestFromRatio(t *testing.T) {
 		t.Fatalf("got %s", got)
 	}
 }
+
+func TestArithmetic(t *testing.T) {
+	if got := New(1, 2).Sub(New(1, 3)).String(); got != "1/6" {
+		t.Fatalf("sub %s", got)
+	}
+	if got := New(2, 3).Mul(New(3, 4)).String(); got != "1/2" {
+		t.Fatalf("mul %s", got)
+	}
+	if got := New(1, 2).Div(New(3, 4)).String(); got != "2/3" {
+		t.Fatalf("div %s", got)
+	}
+	if got := New(1, 2).Neg().String(); got != "-1/2" {
+		t.Fatalf("neg %s", got)
+	}
+	if got := New(1, 2).Min(New(2, 3)).String(); got != "1/2" {
+		t.Fatalf("min %s", got)
+	}
+	if got := New(1, 2).Max(New(2, 3)).String(); got != "2/3" {
+		t.Fatalf("max %s", got)
+	}
+	if !New(0, 7).IsZero() || New(0, 7).Sign() != 0 {
+		t.Fatal("zero checks failed")
+	}
+}

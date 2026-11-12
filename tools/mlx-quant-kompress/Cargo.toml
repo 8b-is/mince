@@ -1,0 +1,10 @@
+[package]
+name = "mlx-quant-kompress"
+version = "0.1.0"
+edition = "2021"
+description = "Zero-dependency SafeTensors quantizer and Ollama blob pusher for mince"
+license = "MIT"
+
+[[bin]]
+name = "mlx-quant-kompress"
+path = "src/main.rs"
