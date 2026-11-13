@@ -1,0 +1,10 @@
+openapi: 3.2.1
+info:
+  title: mince HTTP API
+  version: 0.0.0
+  description: >-
+    Starter contract for a future mince-owned HTTP API. No operations are
+    defined yet. This document does not describe the provider-compatible proxy
+    routes or the future Go library API.
+paths: {}
+components: {}

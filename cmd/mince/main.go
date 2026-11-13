@@ -15,18 +15,19 @@ import (
 	"syscall"
 	"time"
 
-	"mince/internal/ccr"
+	"mince/internal/compression/mincer"
+	"mince/internal/compression/router"
+	"mince/internal/config"
+	"mince/internal/config/vakedhcl"
+	"mince/internal/experimental/ralph"
 	"mince/internal/felix"
 	"mince/internal/litany"
-	"mince/internal/mcp"
-	"mince/internal/mincer"
 	"mince/internal/pq"
-	"mince/internal/proxy"
-	"mince/internal/ralph"
-	"mince/internal/router"
-	"mince/internal/vakedhcl"
-	"mince/internal/wireagent"
-	"mince/internal/wrap"
+	"mince/internal/storage/ccr"
+	"mince/internal/transport/mcp"
+	"mince/internal/transport/proxy"
+	"mince/internal/transport/wireagent"
+	"mince/internal/transport/wrap"
 )
 
 const version = "0.2.0"
@@ -70,15 +71,15 @@ func usage() {
 	fmt.Fprint(os.Stderr, `mince — local reversible context compression
 
 usage:
-  mince proxy    [--config mince.vkd.hcl] [--addr 127.0.0.1:8787] [--min-bytes 1024] [--protect-tail 2] [--compress-timeout 20ms] [--ccr-dir DIR]
-  mince wrap     [--config mince.vkd.hcl] [--port 0] [--ccr-dir DIR] <command> [args...]
+  mince proxy    [--config config/mince.vkd.hcl] [--addr 127.0.0.1:8787] [--min-bytes 1024] [--protect-tail 2] [--compress-timeout 20ms] [--ccr-dir DIR]
+  mince wrap     [--config config/mince.vkd.hcl] [--port 0] [--ccr-dir DIR] <command> [args...]
   mince mcp      serve [--ccr-dir DIR]
   mince compress [--kind auto|json|log|code] [--min-bytes N] [--ccr-dir DIR] [file|-]
   mince retrieve [--grep PATTERN] [--offset N] [--limit N] [--ccr-dir DIR] <ccr_id>
   mince stats    [--addr http://127.0.0.1:8787]
   mince felix eval '<source>'
   mince ralph run [--plan] [--verify] [--max-iter 64] [--every 8]
-  mince init     [--path mince.vkd.hcl] [--force]
+  mince init     [--path config/mince.vkd.hcl] [--force]
   mince version
 `)
 }
@@ -114,11 +115,36 @@ func runProxy(args []string) {
 	protectTail := fs.Int("protect-tail", 2, "trailing turns never touched")
 	compressTimeout := fs.Duration("compress-timeout", 20*time.Millisecond, "per-request compression budget")
 	ccrDir := fs.String("ccr-dir", "", "CCR store directory")
-	configPath := fs.String("config", "", "mince.vkd.hcl capability contract")
+	configPath := fs.String("config", "", "runtime and capability config file")
 	anthropic := fs.String("anthropic-upstream", "https://api.anthropic.com", "Anthropic upstream")
 	openai := fs.String("openai-upstream", "https://api.openai.com", "OpenAI upstream")
 	_ = fs.Parse(args)
-	loadConfig(*configPath)
+	loaded := loadConfig(*configPath)
+	settings := config.DefaultProxySettings()
+	if loaded != nil {
+		settings = loaded.Proxy
+	}
+	if !flagWasSet(fs, "addr") {
+		*addr = settings.Addr
+	}
+	if !flagWasSet(fs, "min-bytes") {
+		*minBytes = settings.MinBytes
+	}
+	if !flagWasSet(fs, "protect-tail") {
+		*protectTail = settings.ProtectTail
+	}
+	if !flagWasSet(fs, "compress-timeout") {
+		*compressTimeout = settings.CompressTimeout
+	}
+	if !flagWasSet(fs, "ccr-dir") {
+		*ccrDir = settings.CCRDir
+	}
+	if !flagWasSet(fs, "anthropic-upstream") {
+		*anthropic = settings.AnthropicUpstream
+	}
+	if !flagWasSet(fs, "openai-upstream") {
+		*openai = settings.OpenAIUpstream
+	}
 
 	store := openStore(*ccrDir)
 	srv := proxy.New(proxy.Config{
@@ -130,7 +156,7 @@ func runProxy(args []string) {
 		CompressTimeout:   *compressTimeout,
 		Store:             store,
 		Logger:            logger(),
-		WireAgents:        wireagent.NewPipeline(&wireagent.TierShuntAgent{}, &wireagent.InlineCCRAgent{Store: store}),
+		WireAgents:        configuredWireAgents(loaded, store),
 	})
 	l, err := srv.Start()
 	if err != nil {
@@ -143,7 +169,11 @@ func runProxy(args []string) {
 		<-ctx.Done()
 		_ = l.Close()
 	}()
-	fmt.Fprintf(os.Stderr, "mince: proxy on http://%s (ccr %s)\n", l.Addr(), *ccrDir)
+	storeDir := *ccrDir
+	if storeDir == "" {
+		storeDir = defaultCCRDir()
+	}
+	fmt.Fprintf(os.Stderr, "mince: proxy on http://%s (ccr %s)\n", l.Addr(), storeDir)
 	if err := srv.Serve(l); err != nil {
 		fmt.Fprintf(os.Stderr, "mince: serve: %v\n", err)
 		os.Exit(1)
@@ -154,16 +184,33 @@ func runWrap(args []string) {
 	fs := flag.NewFlagSet("wrap", flag.ExitOnError)
 	port := fs.Int("port", 0, "proxy port (0 = ephemeral)")
 	ccrDir := fs.String("ccr-dir", "", "CCR store directory")
-	configPath := fs.String("config", "", "mince.vkd.hcl capability contract")
+	configPath := fs.String("config", "", "runtime and capability config file")
 	_ = fs.Parse(args)
-	loadConfig(*configPath)
+	loaded := loadConfig(*configPath)
+	settings := config.DefaultProxySettings()
+	if loaded != nil {
+		settings = loaded.Proxy
+	}
+	if !flagWasSet(fs, "ccr-dir") {
+		*ccrDir = settings.CCRDir
+	}
 	rest := fs.Args()
 	if len(rest) == 0 {
 		fmt.Fprintln(os.Stderr, "mince wrap: no command given")
 		os.Exit(2)
 	}
 	store := openStore(*ccrDir)
-	code, err := wrap.Run(rest[0], rest[1:], *port, store, logger())
+	proxyConfig := proxy.Config{
+		AnthropicUpstream: settings.AnthropicUpstream,
+		OpenAIUpstream:    settings.OpenAIUpstream,
+		MinBytes:          settings.MinBytes,
+		ProtectTail:       settings.ProtectTail,
+		CompressTimeout:   settings.CompressTimeout,
+		Store:             store,
+		Logger:            logger(),
+		WireAgents:        configuredWireAgents(loaded, store),
+	}
+	code, err := wrap.Run(rest[0], rest[1:], *port, store, logger(), proxyConfig)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "mince wrap: %v\n", err)
 	}
@@ -268,14 +315,57 @@ func loadConfig(path string) *vakedhcl.Config {
 	return cfg
 }
 
+func flagWasSet(fs *flag.FlagSet, name string) bool {
+	set := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			set = true
+		}
+	})
+	return set
+}
+
+func configuredWireAgents(cfg *vakedhcl.Config, store *ccr.Store) *wireagent.Pipeline {
+	if cfg == nil || len(cfg.WireAgents) == 0 {
+		return wireagent.NewPipeline(&wireagent.TierShuntAgent{}, &wireagent.InlineCCRAgent{Store: store})
+	}
+	enabled := func(kind string) bool {
+		for _, agent := range cfg.WireAgents {
+			if agent.Kind == kind && agent.Enabled {
+				return true
+			}
+		}
+		return false
+	}
+	var agents []wireagent.Agent
+	if enabled("cache_guard") {
+		agents = append(agents, &wireagent.CacheGuardAgent{Store: store})
+	}
+	if enabled("tier_shunt") {
+		agents = append(agents, &wireagent.TierShuntAgent{})
+	}
+	if enabled("inline_ccr") {
+		agents = append(agents, &wireagent.InlineCCRAgent{Store: store})
+	}
+	// panic_splice is response-side behavior; the current proxy pipeline only
+	// runs on requests, so it is intentionally not installed here.
+	return wireagent.NewPipeline(agents...)
+}
+
 func runInit(args []string) {
 	fs := flag.NewFlagSet("init", flag.ExitOnError)
-	path := fs.String("path", "mince.vkd.hcl", "config path")
+	path := fs.String("path", filepath.Join("config", "mince.vkd.hcl"), "config path")
 	force := fs.Bool("force", false, "overwrite an existing config")
 	_ = fs.Parse(args)
 	if _, err := os.Stat(*path); err == nil && !*force {
 		fmt.Fprintf(os.Stderr, "mince init: %s already exists (use --force)\n", *path)
 		os.Exit(1)
+	}
+	if dir := filepath.Dir(*path); dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			fmt.Fprintf(os.Stderr, "mince init: %v\n", err)
+			os.Exit(1)
+		}
 	}
 	if err := os.WriteFile(*path, []byte(vakedhcl.SampleConfig), 0o644); err != nil {
 		fmt.Fprintf(os.Stderr, "mince init: %v\n", err)
