@@ -10,6 +10,11 @@ we do not enable every optional lint or enforce personal style preferences.
 - Run `golangci-lint` using the checked-in v2 configuration. It enables the
   standard linter set, including `govet`, `staticcheck`, `errcheck`,
   `ineffassign`, and `unused`, and checks `gofmt` formatting.
+- Keep cyclomatic complexity at **15 or below per function**. The `cyclop`
+  linter counts decision points such as branches, loops, and boolean conditions.
+  Split functions with too many decisions into focused helpers. This applies
+  to production and test code; package-average complexity is not enforced.
+  The threshold is a project policy, not a requirement of the Go language.
 - Keep exported names documented, use MixedCaps, pass `context.Context`
   explicitly as the first argument where needed, and handle returned errors.
 - Keep packages focused and package names short; avoid generic names such as
@@ -18,6 +23,10 @@ we do not enable every optional lint or enforce personal style preferences.
 The CI action reports only new lint findings so existing code can be cleaned
 up incrementally. The selected linter set and version are pinned in CI for
 repeatable results.
+
+A full local `golangci-lint run` also reports existing complexity violations;
+the PR check's existing new-findings filter does not require a repository-wide
+refactor when this rule is introduced.
 
 ## Rust
 
