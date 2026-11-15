@@ -181,7 +181,7 @@ func render(body []byte, kind router.Kind, id string, ratio pq.RationalPQ, origi
 		"\n[mince:ccr id=%s saved=%s (%s) raw_lines=%d | use mince_retrieve(id, query, offset, limit) for exact raw content]",
 		id, ratio.String(), ratio.Percent(), lineCount(original),
 	)
-	out := make([]byte, 0, len(body)+len(footer))
+	out := make([]byte, 0, len(body))
 	out = append(out, body...)
 	out = append(out, footer...)
 	return out, true
