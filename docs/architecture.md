@@ -105,9 +105,6 @@ deterministic mincing and exact retrieval. Applications use the public
 `retrieve` commands use this facade. Proxy and other entry points will move to
 it in a later milestone.
 
-See [the Go library guide](library.md) for an importable example and the API's
-defaults, passthrough behavior, and store choices.
-
 The OpenAPI starter under `api/` is for a future HTTP API and intentionally
 defines no operations. Swagger UI is included in Docker Compose for previewing
 that document; it does not turn the Go package into an HTTP service.
