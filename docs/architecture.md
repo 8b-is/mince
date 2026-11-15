@@ -15,6 +15,7 @@ internal/
   compression/
     aligner/                       Finds eligible tool-result content in requests
     mincer/                        Applies content-specific summarizers
+    plan/                          Runs explicitly selected stages in order
     router/                        Classifies JSON, logs, code, or plain text
     ternary/                       Similarity bitboards used by heuristics
   storage/ccr/                     Persists originals and retrieves exact lines
@@ -53,7 +54,7 @@ flowchart TD
 The proxy reads the request body, asks the aligner to locate eligible tool
 results, then streams the upstream response to the client. The aligner protects
 the configured tail of messages. The mincer classifies eligible text and
-selects JSON, log, or code summarization. It first creates a candidate without
+selects JSON, log, or code summarization. It creates a candidate without
 touching CCR. The finalizer checks the fully rendered output, stores the exact
 original once, and attaches a retrieval ID only when the final output is
 shorter. Unsupported requests and rejected candidates pass through without
@@ -100,11 +101,14 @@ visible in the tree. Their package comments describe that status as well.
 
 The module path is `github.com/8b-is/mince`, matching the repository's canonical
 GitHub URL. The root `mince` package provides the supported library facade for
-deterministic mincing and exact retrieval. Applications use the public
-`mince.Store` wrapper; compression and storage implementations remain under
-`internal` and are not part of the public API. The CLI's direct `compress` and
-`retrieve` commands use this facade. Proxy and other entry points will move to
-it in a later milestone.
+deterministic mincing, opt-in sequential plans, and exact retrieval.
+Applications use the public `mince.Store` wrapper; compression, plan execution,
+and storage implementations remain under `internal` and are not part of the
+public API. `Mince` keeps its deterministic-only behavior, while
+`MinceWithPlan` opts into a caller-supplied ordered stage sequence. The runner
+passes one candidate between stages and finalizes it once. The CLI's direct
+`compress` and `retrieve` commands use the facade. Proxy and other entry points
+will move to it in a later milestone.
 
 See [the Go package API contract](api_contract.md) for the exported functions,
 defaults, passthrough behavior, storage lifetime, and retrieval semantics.

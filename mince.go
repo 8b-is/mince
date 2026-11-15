@@ -111,20 +111,13 @@ type Result struct {
 // value uses automatic classification and a 1 KiB minimum. The original is
 // retained in opts.Store or DefaultStore when the result is shortened.
 func Mince(ctx context.Context, content []byte, opts Options) Result {
-	kind := toRouterKind(opts.Kind)
-	var store *ccr.Store
-	if opts.Store != nil {
-		store = opts.Store.storage()
-	} else {
-		store = processStore.inner
-	}
+	result := mincer.Mince(ctx, content, internalOptions(opts))
+	return fromInternalResult(result)
+}
 
-	result := mincer.Mince(ctx, content, mincer.Options{
-		Kind:        kind,
-		MinBytes:    opts.MinBytes,
-		Store:       store,
-		MaxOutliers: opts.MaxOutliers,
-	})
+// fromInternalResult converts the internal result without exposing storage or
+// compression implementation types in the public package.
+func fromInternalResult(result mincer.Result) Result {
 	// The internal result uses the zero value for untouched inputs. Expose a
 	// well-formed exact ratio instead of leaking its zero denominator.
 	savedFraction := "0/1"
@@ -143,6 +136,21 @@ func Mince(ctx context.Context, content []byte, opts Options) Result {
 		SavedFraction: savedFraction,
 		SavedPercent:  savedPercent,
 		Passthrough:   result.Passthrough,
+	}
+}
+
+func internalOptions(opts Options) mincer.Options {
+	var store *ccr.Store
+	if opts.Store != nil {
+		store = opts.Store.storage()
+	} else {
+		store = processStore.inner
+	}
+	return mincer.Options{
+		Kind:        toRouterKind(opts.Kind),
+		MinBytes:    opts.MinBytes,
+		Store:       store,
+		MaxOutliers: opts.MaxOutliers,
 	}
 }
 

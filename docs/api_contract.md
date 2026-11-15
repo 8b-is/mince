@@ -10,6 +10,10 @@ The root package exposes:
 
 - `Mince(ctx, content, options) Result` for one deterministic local mincing
   attempt.
+- `MinceWithPlan(ctx, content, options, plan, registry) (Result, error)` for an
+  explicitly selected sequential plan with caller-provided stages.
+- `Plan`, `StageName`, `StageRegistry`, `StageFunc`, and `Candidate` for defining
+  ordered plans. `DefaultPlan()` returns the deterministic-only plan.
 - `Options` and `Kind` to select automatic, JSON, log, or code handling, set a
   size threshold, and choose a store.
 - `Result` to inspect the output, retrieval ID, selected kind, byte counts,
@@ -65,6 +69,71 @@ implementation.
   `KindAuto` when the input was returned before classification, such as an
   input below the size threshold.
 
+## `MinceWithPlan` behavior
+
+- A plan must contain at least one stage. Stage names must be non-blank, and
+  every name other than the built-in `StageDeterministic` must exist in the
+  supplied registry. Registering the reserved `StageDeterministic` name is an
+  error. Invalid plans return an error before any stage runs.
+- Stages run sequentially in the listed order with the same context. There is
+  one current candidate and one final result; plans do not run stages in
+  parallel.
+- The built-in `StageDeterministic` runs the local JSON, log, or code
+  summarizers. Caller-defined stages receive a copy of the current candidate's
+  bytes and its classified kind. The initial candidate is the original input;
+  after a reduction, later stages receive that reduction. Callbacks receive no
+  CCR identifier or store through the API. Choosing a model-first plan therefore
+  makes the original content available to that model callback.
+- A caller-defined stage proposes a candidate by returning non-empty content
+  that is strictly shorter than the current candidate and the same kind. An
+  error, empty result, non-shortening result, or kind change declines that
+  stage; the last safe candidate is retained and the next stage still runs.
+  JSON proposals must be valid JSON objects so the finalizer can embed retrieval
+  metadata; malformed JSON, arrays, and `null` are declined.
+- Cancellation or deadline expiration stops later stages. The runner finalizes
+  the last accepted candidate, or returns the original unchanged if no stage
+  produced one. Stage errors are treated as declines; the returned error is
+  reserved for invalid plans and a nil context. Callbacks must honor the shared
+  context: a synchronous callback that ignores cancellation can delay return.
+  A proposal returned after cancellation is discarded. Finalization may still
+  store the last accepted candidate's original after cancellation.
+- `Mince` remains the simple deterministic-only entry point. It has its
+  existing signature and behavior; callers opt into `MinceWithPlan` to select
+  another ordered path. A successful finalization calls CCR storage once, only
+  after all stages have completed or stopped.
+
+Example of a deterministic stage followed by an application-owned model stage:
+
+```go
+import (
+	"context"
+
+	mince "github.com/8b-is/mince"
+)
+
+func run(ctx context.Context, content []byte, opts mince.Options) error {
+modelStage := mince.StageName("model")
+plan := mince.Plan{Stages: []mince.StageName{
+	mince.StageDeterministic,
+	modelStage,
+}}
+registry := mince.StageRegistry{
+	modelStage: func(ctx context.Context, in mince.Candidate) (mince.Candidate, error) {
+		// Send only in.Content and in.Kind to the model implementation.
+		// Return the same kind and a shorter candidate to accept its proposal.
+		proposal := []byte("short model summary") // Replace with your model result.
+		return mince.Candidate{Content: proposal, Kind: in.Kind}, nil
+	},
+}
+result, err := mince.MinceWithPlan(ctx, content, opts, plan, registry)
+_ = result
+return err
+}
+```
+
+The model implementation and its transport are application responsibilities;
+this package does not select a provider or send model requests itself.
+
 ## Store behavior
 
 ### Choosing a store
@@ -101,9 +170,10 @@ implementation.
 
 ## Current limits and compatibility
 
-This package exposes deterministic mincing only. It does not call a local or
-hosted model, run adaptive selection, or accept caller-defined pipeline stages.
-Those are future extensions.
+This package exposes deterministic mincing and an opt-in caller-defined
+sequential stage runner. It does not ship a local or hosted model provider, run
+adaptive selection, or select a stage plan automatically; those remain future
+extensions.
 
 The module path is `github.com/8b-is/mince`, but this PR does not create a
 versioned Go release or declare a v1 compatibility promise. The public API is
