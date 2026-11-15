@@ -3,9 +3,9 @@ package rl_test
 import (
 	"testing"
 
-	"mince/internal/experimental/ralph"
-	"mince/internal/experimental/rl"
-	"mince/internal/pq"
+	"github.com/8b-is/mince/internal/experimental/ralph"
+	"github.com/8b-is/mince/internal/experimental/rl"
+	"github.com/8b-is/mince/internal/pq"
 )
 
 func TestBanditShiftAndReplayGate(t *testing.T) {

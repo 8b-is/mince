@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"mince/internal/compression/ternary"
+	"github.com/8b-is/mince/internal/compression/ternary"
 )
 
 const defaultOutliers = 3

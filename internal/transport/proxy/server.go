@@ -15,11 +15,11 @@ import (
 	"sync"
 	"time"
 
-	"mince/internal/compression/aligner"
-	"mince/internal/config"
-	"mince/internal/pq"
-	"mince/internal/storage/ccr"
-	"mince/internal/transport/wireagent"
+	"github.com/8b-is/mince/internal/compression/aligner"
+	"github.com/8b-is/mince/internal/config"
+	"github.com/8b-is/mince/internal/pq"
+	"github.com/8b-is/mince/internal/storage/ccr"
+	"github.com/8b-is/mince/internal/transport/wireagent"
 )
 
 // Config configures the proxy.

@@ -11,11 +11,11 @@ import (
 	"strings"
 	"sync"
 
-	"mince/internal/compression/mincer"
-	"mince/internal/compression/router"
-	"mince/internal/felix"
-	"mince/internal/pq"
-	"mince/internal/storage/ccr"
+	"github.com/8b-is/mince/internal/compression/mincer"
+	"github.com/8b-is/mince/internal/compression/router"
+	"github.com/8b-is/mince/internal/felix"
+	"github.com/8b-is/mince/internal/pq"
+	"github.com/8b-is/mince/internal/storage/ccr"
 )
 
 const protocolVersion = "2024-11-05"

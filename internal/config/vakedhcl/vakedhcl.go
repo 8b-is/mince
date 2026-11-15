@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"mince/internal/config"
-	"mince/internal/litany"
-	"mince/internal/pq"
+	"github.com/8b-is/mince/internal/config"
+	"github.com/8b-is/mince/internal/litany"
+	"github.com/8b-is/mince/internal/pq"
 )
 
 // ValueKind identifies a parsed HCL literal.

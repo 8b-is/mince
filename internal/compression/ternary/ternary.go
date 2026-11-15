@@ -6,7 +6,7 @@ import (
 	"hash/fnv"
 	"math/bits"
 
-	"mince/internal/pq"
+	"github.com/8b-is/mince/internal/pq"
 )
 
 // Trit is a balanced ternary digit.

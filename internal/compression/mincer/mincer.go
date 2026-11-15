@@ -9,9 +9,9 @@ import (
 	"sync"
 	"unicode"
 
-	"mince/internal/compression/router"
-	"mince/internal/pq"
-	"mince/internal/storage/ccr"
+	"github.com/8b-is/mince/internal/compression/router"
+	"github.com/8b-is/mince/internal/pq"
+	"github.com/8b-is/mince/internal/storage/ccr"
 )
 
 // Options controls one mince operation.

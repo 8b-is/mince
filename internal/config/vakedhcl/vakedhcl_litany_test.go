@@ -3,8 +3,8 @@ package vakedhcl
 import (
 	"testing"
 
-	"mince/internal/litany"
-	"mince/internal/pq"
+	"github.com/8b-is/mince/internal/litany"
+	"github.com/8b-is/mince/internal/pq"
 )
 
 func TestLitanyChainAndPOLA(t *testing.T) {

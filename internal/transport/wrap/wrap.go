@@ -13,9 +13,9 @@ import (
 	"syscall"
 	"time"
 
-	"mince/internal/storage/ccr"
-	"mince/internal/transport/proxy"
-	"mince/internal/transport/wireagent"
+	"github.com/8b-is/mince/internal/storage/ccr"
+	"github.com/8b-is/mince/internal/transport/proxy"
+	"github.com/8b-is/mince/internal/transport/wireagent"
 )
 
 // Run starts a proxy on 127.0.0.1:port, injects base URLs, and executes the

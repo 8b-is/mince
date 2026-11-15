@@ -3,7 +3,7 @@ package felix
 import (
 	"fmt"
 
-	"mince/internal/pq"
+	"github.com/8b-is/mince/internal/pq"
 )
 
 // Op is a Felix bytecode opcode.

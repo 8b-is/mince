@@ -95,13 +95,18 @@ remain inactive.
 These packages are grouped under `internal/experimental` to make their status
 visible in the tree. Their package comments describe that status as well.
 
-## Public Go library direction
+## Public Go library
 
-There is not yet a public Go package contract. A future library API should
-provide a supported facade for compression and retrieval, keep the individual
-summarizers and storage details private, and be used by both the CLI and proxy.
-The module path and API stability policy need to be settled before downstream
-projects can depend on it.
+The module path is `github.com/8b-is/mince`, matching the repository's canonical
+GitHub URL. The root `mince` package provides the supported library facade for
+deterministic mincing and exact retrieval. Applications use the public
+`mince.Store` wrapper; compression and storage implementations remain under
+`internal` and are not part of the public API. The CLI's direct `compress` and
+`retrieve` commands use this facade. Proxy and other entry points will move to
+it in a later milestone.
+
+See [the Go package API contract](api_contract.md) for the exported functions,
+defaults, passthrough behavior, storage lifetime, and retrieval semantics.
 
 The OpenAPI starter under `api/` is for a future HTTP API and intentionally
 defines no operations. Swagger UI is included in Docker Compose for previewing

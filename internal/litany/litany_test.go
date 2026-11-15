@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"mince/internal/pq"
+	"github.com/8b-is/mince/internal/pq"
 )
 
 func TestRoundTrip(t *testing.T) {

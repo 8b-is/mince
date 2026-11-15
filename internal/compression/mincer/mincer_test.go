@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"mince/internal/compression/mincer"
-	"mince/internal/compression/router"
-	"mince/internal/storage/ccr"
+	"github.com/8b-is/mince/internal/compression/mincer"
+	"github.com/8b-is/mince/internal/compression/router"
+	"github.com/8b-is/mince/internal/storage/ccr"
 )
 
 func TestJSONCrusherPreservesAnomaly(t *testing.T) {

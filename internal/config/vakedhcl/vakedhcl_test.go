@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"mince/internal/litany"
+	"github.com/8b-is/mince/internal/litany"
 )
 
 func TestSampleConfig(t *testing.T) {

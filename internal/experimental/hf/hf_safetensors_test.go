@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"mince/internal/compression/ternary"
+	"github.com/8b-is/mince/internal/compression/ternary"
 )
 
 func writeFixture(t *testing.T, pos, neg uint64, bias int64) (string, string) {
