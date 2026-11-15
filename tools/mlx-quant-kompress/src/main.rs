@@ -67,7 +67,7 @@ fn export(input: &str, output: &str, name: &str) -> Result<(), String> {
         packed_all.extend_from_slice(&p);
         eprintln!("tensor {tname}: {} -> {} bytes", t.count(), p.len());
     }
-    let half = (packed_all.len() + 1) / 2;
+    let half = packed_all.len().div_ceil(2);
     let (a, b) = packed_all.split_at(half);
     let laminated = cross_laminate(a, b);
     let sphere = sphere_pop(&laminated);
@@ -99,7 +99,9 @@ impl Tensor {
     }
 }
 
-fn parse_safetensors(b: &[u8]) -> Result<(Vec<(String, Tensor)>, &[u8]), String> {
+type ParsedSafetensors<'a> = (Vec<(String, Tensor)>, &'a [u8]);
+
+fn parse_safetensors(b: &[u8]) -> Result<ParsedSafetensors<'_>, String> {
     if b.len() < 8 { return Err("short safetensors".into()); }
     let hlen = u64::from_le_bytes(b[..8].try_into().unwrap()) as usize;
     if hlen == 0 || hlen > 100 << 20 || 8 + hlen > b.len() { return Err("bad header length".into()); }
@@ -134,7 +136,7 @@ fn quantize_tensor(t: &Tensor, payload: &[u8]) -> Result<Vec<u8>, String> {
         if v.abs() > max_abs { max_abs = v.abs(); }
     }
     let scale = if max_abs == 0.0 { 1.0 } else { max_abs / 7.0 };
-    let mut out = Vec::with_capacity((n + 1) / 2);
+    let mut out = Vec::with_capacity(n.div_ceil(2));
     let mut cur = 0u8;
     for i in 0..n {
         let v = decode_at(&t.dtype, payload, t.start, i)?;
