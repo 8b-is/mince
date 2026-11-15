@@ -55,4 +55,4 @@
 - [x] **Step 4: Run the full Go suite.** Run `go test ./...`; mincer packages must pass. The known CCR mode assertion may fail on Windows because it is unchanged from `origin/main`.
 - [x] **Step 5: Run static and formatting checks.** Run `gofmt` on the changed Go file, then `go vet ./...` and `git diff --check`.
 - [x] **Step 6: Commit the implementation and plan artifacts to the existing PR branch.** Use a message that describes the candidate/finalization coverage and removal of unchecked buffer capacity arithmetic.
-- [ ] **Step 7: Push the PR branch and inspect GitHub checks.** Confirm CodeQL no longer reports the allocation-size overflow and the Go checks pass.
+- [x] **Step 7: Push the PR branch and inspect GitHub checks.** Confirm CodeQL no longer reports the allocation-size overflow and the Go checks pass.
