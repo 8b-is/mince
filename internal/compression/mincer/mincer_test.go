@@ -117,3 +117,74 @@ func TestBelowThresholdPassthrough(t *testing.T) {
 		t.Fatal("small content must pass through verbatim")
 	}
 }
+
+func TestTransformProducesCandidateWithoutRetrievalMetadata(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("package demo\n\nfunc run() {\n")
+	for i := 0; i < 40; i++ {
+		fmt.Fprintf(&b, "\tprocess(%d)\n", i)
+	}
+	b.WriteString("}\n")
+
+	candidate := mincer.Transform(context.Background(), []byte(b.String()), mincer.TransformOptions{
+		Kind:     router.KindCode,
+		MinBytes: 100,
+	})
+	if !candidate.Changed || candidate.Kind != router.KindCode {
+		t.Fatalf("expected a changed code candidate, got changed=%t kind=%v", candidate.Changed, candidate.Kind)
+	}
+	if !strings.Contains(string(candidate.Content), "minced L") {
+		t.Fatal("expected a folded code body")
+	}
+	if strings.Contains(string(candidate.Content), "ccr_") || strings.Contains(string(candidate.Content), "mince:ccr") {
+		t.Fatal("candidate must not contain retrieval metadata before finalization")
+	}
+}
+
+func TestFinalizeRejectedCandidateDoesNotWriteCCR(t *testing.T) {
+	original := []byte(strings.Repeat("x", 1000))
+	store := ccr.NewMemory()
+	candidate := mincer.Candidate{
+		Content: []byte(strings.Repeat("x", 950)),
+		Kind:    router.KindText,
+		Changed: true,
+	}
+
+	result := mincer.Finalize(original, candidate, store)
+	if !result.Passthrough || result.CCRID != "" || !bytes.Equal(result.Minced, original) {
+		t.Fatal("weak candidate must pass through without a retrieval ID")
+	}
+	_, _, puts, _ := store.Stats()
+	if puts != 0 {
+		t.Fatalf("rejected candidate wrote to CCR %d times", puts)
+	}
+}
+
+func TestFinalizeAcceptedCandidateStoresOriginalOnce(t *testing.T) {
+	original := []byte(strings.Repeat("original payload ", 200))
+	store := ccr.NewMemory()
+	candidate := mincer.Candidate{
+		Content: []byte("short candidate"),
+		Kind:    router.KindText,
+		Changed: true,
+	}
+
+	result := mincer.Finalize(original, candidate, store)
+	if result.Passthrough || result.CCRID == "" || len(result.Minced) >= len(original) {
+		t.Fatal("accepted candidate should be shortened and carry a retrieval ID")
+	}
+	if !bytes.Contains(result.Minced, []byte(result.CCRID)) {
+		t.Fatal("final output must carry the retrieval ID")
+	}
+	_, _, puts, _ := store.Stats()
+	if puts != 1 {
+		t.Fatalf("accepted candidate wrote to CCR %d times, want 1", puts)
+	}
+	got, err := store.Get(strings.TrimPrefix(result.CCRID, "ccr_"))
+	if err != nil {
+		t.Fatalf("retrieve original: %v", err)
+	}
+	if !bytes.Equal(got, original) {
+		t.Fatal("CCR did not retain the exact original bytes")
+	}
+}

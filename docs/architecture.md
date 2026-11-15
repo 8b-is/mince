@@ -53,10 +53,11 @@ flowchart TD
 The proxy reads the request body, asks the aligner to locate eligible tool
 results, then streams the upstream response to the client. The aligner protects
 the configured tail of messages. The mincer classifies eligible text and
-selects JSON, log, or code summarization. When it accepts a shortened result,
-the original bytes are stored in CCR and the shortened content carries a
-retrieval ID. Unsupported requests and results that do not save enough space
-pass through.
+selects JSON, log, or code summarization. It first creates a candidate without
+touching CCR. The finalizer checks the fully rendered output, stores the exact
+original once, and attaches a retrieval ID only when the final output is
+shorter. Unsupported requests and rejected candidates pass through without
+creating a CCR record.
 
 The proxy also exposes health and stats endpoints. Without a config file, the
 CLI enables the tier classifier and inline CCR operations. A config file can

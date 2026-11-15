@@ -81,11 +81,10 @@ implementation.
   disk records remain until removed outside this API. The store creates its
   directory with restrictive permissions and writes files with restrictive
   permissions where the operating system supports them.
-- Current implementation can write the original to a disk-backed store before
-  it knows whether the summary will be accepted. A rejected candidate can
-  therefore leave a stored record with no `CCRID` returned to the caller and
-  no supported way for the caller to retrieve it. This behavior should be
-  removed when candidate generation and final storage are separated.
+- Candidate generation does not access the store. The finalizer checks the
+  rendered output before writing the original, then writes it once only for an
+  accepted shortened result. Rejected candidates and failed storage writes
+  return the original without a `CCRID`.
 
 ### Retrieval
 
