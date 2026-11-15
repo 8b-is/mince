@@ -11,8 +11,9 @@ var keepLineRE = regexp.MustCompile(`^\s*(package|import|from|use|#include|modul
 	`^\s*@|^\s*//|^\s*#|^\s*/\*|^\s*\*`)
 
 // minceCode keeps declarations, imports and top-level structure while folding
-// dense indented bodies into a reversible stub.
-func minceCode(content []byte, id string) ([]byte, bool) {
+// dense indented bodies into a stub. Retrieval metadata is added later by the
+// finalizer, so this stage does not need or expose a CCR identifier.
+func minceCode(content []byte) ([]byte, bool) {
 	lines := strings.Split(strings.ReplaceAll(string(content), "\r\n", "\n"), "\n")
 	if len(lines) < 20 {
 		return nil, false
@@ -40,7 +41,7 @@ func minceCode(content []byte, id string) ([]byte, bool) {
 		}
 		run := j - i
 		if run >= 4 {
-			out = append(out, "[...minced L"+itoa(i+1)+"-L"+itoa(j)+" -> ccr_"+id+"...]")
+			out = append(out, "[...minced L"+itoa(i+1)+"-L"+itoa(j)+"...]")
 			changed = true
 		} else {
 			out = append(out, lines[i:j]...)

@@ -1,3 +1,4 @@
-// Package mincer classifies and compresses JSON, logs, and code while keeping
-// the exact original content in the CCR store.
+// Package mincer classifies and transforms JSON, logs, and code into candidate
+// summaries. Its finalizer applies retrieval metadata and stores the exact
+// original only after accepting a shortened result.
 package mincer
