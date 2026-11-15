@@ -6,6 +6,13 @@ run:
 
 linters:
   default: standard
+  enable:
+    - cyclop
+  settings:
+    cyclop:
+      max-complexity: 15
+      # Enforce a per-function limit without a package-average constraint.
+      package-average: 0.0
 
 formatters:
   enable:
