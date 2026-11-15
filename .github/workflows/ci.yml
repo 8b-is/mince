@@ -1,26 +1,83 @@
-name: ci
+name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  go:
+  go-lint:
+    name: Go lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26"
-      - run: go vet ./...
-      - run: CGO_ENABLED=0 go test -race ./...
-      - run: CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/mince ./cmd/mince
+      - name: Check Go formatting
+        run: |
+          unformatted="$(gofmt -l $(git ls-files '*.go'))"
+          if [ -n "$unformatted" ]; then
+            printf 'These Go files need gofmt:\n%s\n' "$unformatted"
+            exit 1
+          fi
+      - name: Run go vet
+        run: go vet ./...
 
-  rust:
+  go-test:
+    name: Go tests
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Run race-enabled Go tests
+        run: go test -race ./...
+
+  go-build:
+    name: Go build
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Build all Go packages
+        run: go build ./...
+
+  rust-lint:
+    name: Rust lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --manifest-path tools/mlx-quant-kompress/Cargo.toml
-      - run: cargo build --release --manifest-path tools/mlx-quant-kompress/Cargo.toml
+        with:
+          components: clippy
+      - name: Run Clippy
+        run: cargo clippy --manifest-path tools/mlx-quant-kompress/Cargo.toml --all-targets -- -D warnings
+
+  rust-test:
+    name: Rust tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run Rust tests
+        run: cargo test --manifest-path tools/mlx-quant-kompress/Cargo.toml
+
+  rust-build:
+    name: Rust build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build Rust release binary
+        run: cargo build --release --manifest-path tools/mlx-quant-kompress/Cargo.toml
