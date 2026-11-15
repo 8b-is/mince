@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"mince/internal/compression/ternary"
-	"mince/internal/pq"
+	"github.com/8b-is/mince/internal/compression/ternary"
+	"github.com/8b-is/mince/internal/pq"
 )
 
 // KompressUltra is the integer-only salience head distilled from the

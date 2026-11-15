@@ -8,9 +8,9 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"mince/internal/experimental/rl"
-	"mince/internal/litany"
-	"mince/internal/pq"
+	"github.com/8b-is/mince/internal/experimental/rl"
+	"github.com/8b-is/mince/internal/litany"
+	"github.com/8b-is/mince/internal/pq"
 )
 
 const RingSize = 64

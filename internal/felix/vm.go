@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"mince/internal/pq"
+	"github.com/8b-is/mince/internal/pq"
 )
 
 // Kind is a runtime value kind.

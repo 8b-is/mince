@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"hash/crc32"
 
-	"mince/internal/pq"
+	"github.com/8b-is/mince/internal/pq"
 )
 
 const (

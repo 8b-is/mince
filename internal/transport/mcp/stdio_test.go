@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"mince/internal/storage/ccr"
+	"github.com/8b-is/mince/internal/storage/ccr"
 )
 
 func bigLog() string {

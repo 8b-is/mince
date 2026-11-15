@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"mince/internal/pq"
+	"github.com/8b-is/mince/internal/pq"
 )
 
 func mustCompile(t *testing.T, src string) *Program {

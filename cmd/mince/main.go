@@ -15,19 +15,18 @@ import (
 	"syscall"
 	"time"
 
-	"mince/internal/compression/mincer"
-	"mince/internal/compression/router"
-	"mince/internal/config"
-	"mince/internal/config/vakedhcl"
-	"mince/internal/experimental/ralph"
-	"mince/internal/felix"
-	"mince/internal/litany"
-	"mince/internal/pq"
-	"mince/internal/storage/ccr"
-	"mince/internal/transport/mcp"
-	"mince/internal/transport/proxy"
-	"mince/internal/transport/wireagent"
-	"mince/internal/transport/wrap"
+	minceapi "github.com/8b-is/mince"
+	"github.com/8b-is/mince/internal/config"
+	"github.com/8b-is/mince/internal/config/vakedhcl"
+	"github.com/8b-is/mince/internal/experimental/ralph"
+	"github.com/8b-is/mince/internal/felix"
+	"github.com/8b-is/mince/internal/litany"
+	"github.com/8b-is/mince/internal/pq"
+	"github.com/8b-is/mince/internal/storage/ccr"
+	"github.com/8b-is/mince/internal/transport/mcp"
+	"github.com/8b-is/mince/internal/transport/proxy"
+	"github.com/8b-is/mince/internal/transport/wireagent"
+	"github.com/8b-is/mince/internal/transport/wrap"
 )
 
 const version = "0.2.0"
@@ -251,9 +250,17 @@ func runCompress(args []string) {
 		os.Exit(1)
 	}
 
-	store := openStore(*ccrDir)
-	res := mincer.Mince(context.Background(), content, mincer.Options{
-		Kind:     router.ParseKind(*kind),
+	storeDir := *ccrDir
+	if storeDir == "" {
+		storeDir = defaultCCRDir()
+	}
+	store, err := minceapi.OpenStore(storeDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "mince compress: ccr: %v\n", err)
+		os.Exit(1)
+	}
+	res := minceapi.Mince(context.Background(), content, minceapi.Options{
+		Kind:     minceapi.Kind(*kind),
 		MinBytes: *minBytes,
 		Store:    store,
 	})
@@ -261,7 +268,7 @@ func runCompress(args []string) {
 		os.Exit(1)
 	}
 	fmt.Fprintf(os.Stderr, "mince: kind=%s ccr=%s saved=%s (%s) raw=%d out=%d passthrough=%v\n",
-		res.Kind, res.CCRID, res.Saved.String(), res.Saved.Percent(), res.RawBytes, res.MincedBytes, res.Passthrough)
+		res.Kind, res.CCRID, res.SavedFraction, res.SavedPercent, res.RawBytes, res.MincedBytes, res.Passthrough)
 }
 
 func runRetrieve(args []string) {
@@ -279,7 +286,15 @@ func runRetrieve(args []string) {
 	for len(id) > 4 && id[:4] == "ccr_" {
 		id = id[4:]
 	}
-	store := openStore(*ccrDir)
+	storeDir := *ccrDir
+	if storeDir == "" {
+		storeDir = defaultCCRDir()
+	}
+	store, err := minceapi.OpenStore(storeDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "mince retrieve: ccr: %v\n", err)
+		os.Exit(1)
+	}
 	text, err := store.Retrieve(id, *grep, *offset, *limit)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "mince retrieve: %v\n", err)

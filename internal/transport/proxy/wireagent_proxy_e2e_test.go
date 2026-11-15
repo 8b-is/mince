@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"mince/internal/storage/ccr"
-	"mince/internal/transport/wireagent"
+	"github.com/8b-is/mince/internal/storage/ccr"
+	"github.com/8b-is/mince/internal/transport/wireagent"
 )
 
 func TestWireAgentsInlineRetrieveAndKVPrefix(t *testing.T) {

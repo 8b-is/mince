@@ -9,8 +9,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"mince/internal/compression/mincer"
-	"mince/internal/storage/ccr"
+	"github.com/8b-is/mince/internal/compression/mincer"
+	"github.com/8b-is/mince/internal/storage/ccr"
 )
 
 // Options controls alignment.

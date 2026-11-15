@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"mince/internal/pq"
+	"github.com/8b-is/mince/internal/pq"
 )
 
 // Action is a compression action the proxy can take.

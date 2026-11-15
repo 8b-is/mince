@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"mince/internal/compression/router"
-	"mince/internal/felix"
-	"mince/internal/storage/ccr"
+	"github.com/8b-is/mince/internal/compression/router"
+	"github.com/8b-is/mince/internal/felix"
+	"github.com/8b-is/mince/internal/storage/ccr"
 )
 
 // Context is one wire turn.
