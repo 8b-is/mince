@@ -104,11 +104,12 @@ type Result struct {
 	Passthrough   bool
 }
 
-// Mince applies deterministic local summarizers to eligible content. Inputs
-// below the threshold, unsupported content, and outputs saving less than 10%
-// pass through unchanged. The zero Options value uses automatic classification
-// and a 1 KiB minimum. The original is retained in opts.Store or DefaultStore
-// when the result is shortened.
+// Mince applies deterministic local summarizers to eligible content. The
+// candidate must save at least 10% before retrieval metadata is added, and the
+// final output must be smaller than the input. Small, unsupported, cancelled,
+// or otherwise ineligible inputs pass through unchanged. The zero Options
+// value uses automatic classification and a 1 KiB minimum. The original is
+// retained in opts.Store or DefaultStore when the result is shortened.
 func Mince(ctx context.Context, content []byte, opts Options) Result {
 	kind := toRouterKind(opts.Kind)
 	var store *ccr.Store
